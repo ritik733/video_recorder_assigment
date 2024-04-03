@@ -1,112 +1,40 @@
-import tkinter as tk
-from tkinter.filedialog import askdirectory
-import tkinter.messagebox 
-import subprocess
-import time
+import cv2
 
-window = tk.Tk()
-window.title('Video Recorder')
-window.geometry('300x140')
+def record_video(output_file, duration=10):
+    # Open the default camera (usually the first camera connected to the system)
+    cap = cv2.VideoCapture(0)
+    
+    # Check if the camera is opened successfully
+    if not cap.isOpened():
+        print("Error: Unable to open camera.")
+        return
+    
+    # Define the codec and create VideoWriter object
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter(output_file, fourcc, 20.0, (640, 480))
+    
+    # Record video for the specified duration
+    start_time = cv2.getTickCount()
+    while True:
+        ret, frame = cap.read()  # Capture frame-by-frame
+        
+        # Write the frame to the output video file
+        out.write(frame)
+        
+        # Display the recorded video in a window
+        cv2.imshow('Video Recorder', frame)
+        
+        # Stop recording if the specified duration has elapsed
+        if cv2.waitKey(1) & 0xFF == ord('q') or \
+           ((cv2.getTickCount() - start_time) / cv2.getTickFrequency()) >= duration:
+            break
+    
+    # Release resources
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
 
-var_lbl_status = tk.StringVar()
-var_lbl_save_path = tk.StringVar() 
-var_btn_record = tk.StringVar() 
-
-on_record = False
-save_path = None
-child_proc = None
-var_lbl_status.set('Recording: OFF') 
-var_btn_record.set('record')
-
-def get_ffmpeg_cmd(save_path):
-    '''
-    get video recording command
-    '''
-
-    cur_ts = str(int(time.time()))
-    filename = '{}.mkv'.format(cur_ts)
-    file_path = '{}/{}'.format(save_path, filename)
-    # the order in args is important
-    # you can speicy your ffmpeg flags here
-    args = [
-        ['-f', 'avfoundation'],
-        ['-framerate', '30'],
-        ['-i', '"0"'],
-        ['-s', '1280x720'],
-        ['-c:v', 'libx264'],
-        ['-preset', 'veryfast'],
-        ['-crf', '30'],
-        ['-c:a', 'copy'],
-        ['', file_path],
-        ['-async', '1'],
-        ['-vsync', '1'],
-    ]
-
-    cmd = 'ffmpeg '
-    for arg in args:
-        cmd += '{} {} '.format(arg[0], arg[1])
-    return cmd
-
-
-
-def select_path():
-    global save_path
-    global video_recorder
-
-    path_ = askdirectory()
-    save_path = path_
-
-def on_click_record():
-
-    global save_path
-
-    if not save_path:
-        tkinter.messagebox.askquestion("save as", "Please click 'save as' to set save path! ")
-        return None
-
-    global on_record
-    global child_proc
-
-    if not on_record:
-        on_record = True
-        var_lbl_status.set('Recording: ON')
-        var_btn_record.set('stop')
-
-        cmd = get_ffmpeg_cmd(save_path)
-        child_proc = subprocess.Popen(cmd, shell=True)
-    else:
-        on_record = False
-        var_lbl_status.set('Recording: OFF')
-        var_btn_record.set('record')
-        child_proc.terminate()
-
-
-lbl_status = tk.Label(window, 
-    textvariable=var_lbl_status,    
-    font=('Arial', 15),    
-    width=15, height=2  
-    )
-lbl_status.pack()    
-
-btn_set_save_path = tk.Button(window, 
-    text='save as',      
-    width=15, height=2, 
-    command=select_path)    
-
-btn_set_save_path.pack()
-
-lbl_save_path = tk.Label(window,
-    textvariable=var_lbl_save_path,
-    font=('Arial', 15),    
-    width=15, height=2  
-)
-lbl_status.pack()
-
-btn_start_recrod = tk.Button(window, 
-    textvariable=var_btn_record,     
-    width=15, height=2, 
-    command=on_click_record)   
-
-btn_start_recrod.pack()
-
-window.mainloop()
+if __name__ == "__main__":
+    output_file = 'recorded_video.avi'
+    duration = 10  # in seconds
+    record_video(output_file, duration)
